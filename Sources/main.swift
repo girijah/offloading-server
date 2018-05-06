@@ -1,10 +1,4 @@
-//
-//  main.swift
-//  PerfectTemplate
-//
-//  Created by Kyle Jessup on 2015-11-05.
-//	Copyright (C) 2015 PerfectlySoft, Inc.
-//
+
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the Perfect.org open source project
@@ -16,59 +10,6 @@
 //
 //===----------------------------------------------------------------------===//
 //
-
-//import PerfectHTTP
-//import PerfectHTTPServer
-//
-//// An example request handler.
-//// This 'handler' function can be referenced directly in the configuration below.
-//func handler(request: HTTPRequest, response: HTTPResponse) {
-//    // Respond with a simple message.
-//    response.setHeader(.contentType, value: "text/html")
-//    response.appendBody(string: "<html><title>Hello, world!</title><body>Hello, world!</body></html>")
-//    // Ensure that response.completed() is called when your processing is done.
-//    response.completed()
-//}
-//
-//// Configuration data for an example server.
-//// This example configuration shows how to launch a server
-//// using a configuration dictionary.
-//
-//
-//let confData = [
-//    "servers": [
-//        // Configuration data for one server which:
-//        //    * Serves the hello world message at <host>:<port>/
-//        //    * Serves static files out of the "./webroot"
-//        //        directory (which must be located in the current working directory).
-//        //    * Performs content compression on outgoing data when appropriate.
-//        [
-//            "name":"localhost",
-//            "port":8181,
-//            "routes":[
-//                ["method":"get", "uri":"/", "handler":handler],
-//                ["method":"get", "uri":"/**", "handler":PerfectHTTPServer.HTTPHandler.staticFiles,
-//                 "documentRoot":"./webroot",
-//                 "allowResponseFilters":true]
-//            ],
-//            "filters":[
-//                [
-//                "type":"response",
-//                "priority":"high",
-//                "name":PerfectHTTPServer.HTTPFilter.contentCompression,
-//                ]
-//            ]
-//        ]
-//    ]
-//]
-//
-//do {
-//    // Launch the servers based on the configuration data.
-//    try HTTPServer.launch(configurationData: confData)
-//} catch {
-//    fatalError("\(error)") // fatal error launching one of the servers
-//}
-
 
 import PerfectHTTP
 import PerfectHTTPServer
@@ -102,7 +43,8 @@ routes.add(method: .post, uri: "/add") {
     do {
         try response.setBody(json: responsePayload)
     } catch {
-        fatalError("\(error)") // fatal error launching one of the servers
+        // fatal error launching one of the servers
+        fatalError("\(error)")
     }
     response.completed()
 }
@@ -110,30 +52,48 @@ routes.add(method: .post, uri: "/add") {
 routes.add(method: .post, uri: "/recognizeImage") {
     request, response in
     
-    var responsePayload: [String: Any] = [ "recognizedImage" : 0 ]
+    var responsePayload: [String: Any] = [ "recognizedImage" : "" ]
     
-    if let sampleBuffer = request.param(name: "bufferParameter") {
+    if let sampleBufferInString = request.param(name: "bufferParameter") {
         
-        guard let model = try? VNCoreMLModel(for: Resnet50().model) else { return }
-        let request = VNCoreMLRequest(model: model) { (finishedRequest, error) in
-            guard let results = finishedRequest.results as? [VNClassificationObservation] else { return }
-            guard let Observation = results.first else { return }
+        do {
+            // json string to json data
+            let jsonData = try JSONSerialization.data(withJSONObject: sampleBufferInString, options: JSONSerialization.WritingOptions.prettyPrinted)
             
-            responsePayload["recognizedImage"] = Observation.identifier
-            print("Recognized object is: \(String(describing: responsePayload["recognizedImage"])) ")
-        
+            print("JSON Data: " , jsonData)
+            
+            // json data to object
+            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData, options: .allowFragments)
+            let sampleBuffer: CMSampleBuffer = jsonObject as! CMSampleBuffer
+            print("Buffer converted: ", sampleBuffer)
+            
+            // Image recognition
+            guard let model = try? VNCoreMLModel(for: Resnet50().model) else { return }
+            let request = VNCoreMLRequest(model: model) { (finishedRequest, error) in
+                guard let results = finishedRequest.results as? [VNClassificationObservation] else { return }
+                guard let Observation = results.first else { return }
+                
+                responsePayload["recognizedImage"] = Observation.identifier
+                
+                print("Recognized object is: \(String(describing: responsePayload["recognizedImage"])) ")
+                
+            }
+            guard let pixelBuffer: CVPixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+            
+            // executes request
+            try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:]).perform([request])
+            
+        } catch let error {
+            print (error)
         }
-        guard let pixelBuffer: CVPixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer as! CMSampleBuffer) else { return }
-        
-        // executes request
-        try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:]).perform([request])
         
     }
     
     do {
         try response.setBody(json: responsePayload)
     } catch {
-        fatalError("\(error)") // fatal error launching one of the servers
+        // fatal error launching one of the servers
+        fatalError("\(error)")
     }
     response.completed()
 }
@@ -142,18 +102,12 @@ routes.add(method: .post, uri: "/recognizeImage") {
 routes.add(method: .get, uri: "/offload") {
     request, response in
     
-    //var responsePayload: [String: Any] = [ "sum" : 0 ]
     response.setBody(string: "Handler was called")
     
-        for i in 0..<1000000 {
-            print ("Execution of tasks!! ", i )
-        }
-
-//    do {
-//        try response.setBody(json: responsePayload)
-//    } catch {
-//        fatalError("\(error)") // fatal error launching one of the servers
-//    }
+    for i in 0..<1000000 {
+        print ("Execution of tasks!! ", i )
+    }
+    
     response.completed()
 }
 
@@ -163,5 +117,6 @@ do {
     try HTTPServer.launch(
         .server(name: "localhost", port: 8181, routes: routes))
 } catch {
-    fatalError("\(error)") // fatal error launching one of the servers
+    // fatal error launching one of the servers
+    fatalError("\(error)")
 }
