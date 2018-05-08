@@ -49,6 +49,28 @@ routes.add(method: .post, uri: "/add") {
     response.completed()
 }
 
+routes.add(method: .post, uri: "/test") {
+    request, response in
+    
+    var responsePayload: [String: Any] = [ "remote_says" : 0 ]
+    
+    if let param = request.param(name: "test") {
+        if param == "hi" {
+            responsePayload["remote_says"] = "hello from remote"
+        print("The remote says: \(String(describing: responsePayload["remote_says"]))")
+        }
+    }
+    
+    do {
+        try response.setBody(json: responsePayload)
+    } catch {
+        // fatal error launching one of the servers
+        fatalError("\(error)")
+    }
+    response.completed()
+}
+
+
 routes.add(method: .post, uri: "/recognizeImage") {
     request, response in
     
