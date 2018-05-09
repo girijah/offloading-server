@@ -74,20 +74,22 @@ routes.add(method: .post, uri: "/test") {
 routes.add(method: .post, uri: "/recognizeImage") {
     request, response in
     
-    var responsePayload: [String: Any] = [ "recognizedImage" : "" ]
+    var responsePayload: [String: Any] = [ "recognizedImage" : "Identified Object from Remote" ]
     
     if let sampleBufferInString = request.param(name: "bufferParameter") {
-        
+        print("Sample Buffer: ", sampleBufferInString)
         do {
             // json string to json data
-            let jsonData = try JSONSerialization.data(withJSONObject: sampleBufferInString, options: JSONSerialization.WritingOptions.prettyPrinted)
+//            let jsonData = try JSONSerialization.data(withJSONObject: sampleBufferInString, options: JSONSerialization.WritingOptions.prettyPrinted)
+//
+//            print("JSON Data: " , jsonData)
+//
+//            // json data to object
+//            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData, options: .allowFragments)
             
-            print("JSON Data: " , jsonData)
             
-            // json data to object
-            let jsonObject = try! JSONSerialization.jsonObject(with: jsonData, options: .allowFragments)
-            let sampleBuffer: CMSampleBuffer = jsonObject as! CMSampleBuffer
-            print("Buffer converted: ", sampleBuffer)
+            //let sampleBuffer: CMSampleBuffer = sampleBufferInString as! CMSampleBuffer
+//            print("Buffer converted: ", sampleBuffer)
             
             // Image recognition
             guard let model = try? VNCoreMLModel(for: Resnet50().model) else { return }
@@ -95,15 +97,15 @@ routes.add(method: .post, uri: "/recognizeImage") {
                 guard let results = finishedRequest.results as? [VNClassificationObservation] else { return }
                 guard let Observation = results.first else { return }
                 
-                responsePayload["recognizedImage"] = Observation.identifier
-                
+//                responsePayload["recognizedImage"] = Observation.identifier
+                responsePayload["recognizedImage"] = "object"
                 print("Recognized object is: \(String(describing: responsePayload["recognizedImage"])) ")
                 
             }
-            guard let pixelBuffer: CVPixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+//            guard let pixelBuffer: CVPixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
             
             // executes request
-            try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:]).perform([request])
+//            try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:]).perform([request])
             
         } catch let error {
             print (error)
